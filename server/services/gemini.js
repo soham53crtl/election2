@@ -12,13 +12,13 @@ const secretClient = new SecretManagerServiceClient();
  */
 async function getApiKey() {
   try {
+    const projectId = process.env.GOOGLE_CLOUD_PROJECT || await secretClient.getProjectId();
     const [version] = await secretClient.accessSecretVersion({
-      name: `projects/${process.env.GOOGLE_CLOUD_PROJECT || '619800545642'}/secrets/GEMINI_API_KEY/versions/latest`,
+      name: `projects/${projectId}/secrets/GEMINI_API_KEY/versions/latest`,
     });
     return version.payload.data.toString();
   } catch (error) {
     logger.error("Secret Manager Access Failed", { error: error.message });
-    // Fallback to env for local dev if secret manager is not available
     return process.env.GEMINI_API_KEY;
   }
 }
