@@ -4,6 +4,8 @@
   "type": "module",
   "main": "index.js",
   "dependencies": {
+    "@google-cloud/secret-manager": "^5.0.0",
+    "@google-cloud/trace-agent": "^7.1.2",
     "@google/generative-ai": "^0.21.0",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
@@ -11,12 +13,15 @@
     "express": "^4.19.2",
     "express-rate-limit": "^7.3.0",
     "firebase-admin": "^12.0.0",
-    "@google-cloud/secret-manager": "^5.0.0",
-    "@google-cloud/trace-agent": "^7.1.2",
     "helmet": "^7.1.0",
     "morgan": "^1.10.0"
   },
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "supertest": "^7.2.2",
+    "vitest": "^4.1.5"
   }
 }

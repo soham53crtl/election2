@@ -1,45 +1,49 @@
-import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { CHAT_CONFIG, NODE_ENV } from "../config/constants.js";
+import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
 import { logger } from "../utils/logger.js";
+import { GEMINI_CONFIG } from "../config/constants.js";
 
-const client = new SecretManagerServiceClient();
-let genAI;
+const secretClient = new SecretManagerServiceClient();
 
+/**
+ * Retrieves the Gemini API key from Google Cloud Secret Manager.
+ * @returns {Promise<string>} The API key.
+ * @throws {Error} If secret retrieval fails.
+ */
 async function getApiKey() {
-  if (NODE_ENV !== "production") {
-    return process.env.GEMINI_API_KEY;
-  }
-  
   try {
-    const [version] = await client.accessSecretVersion({
-      name: "projects/speedy-aurora-471602-c2/secrets/GEMINI_API_KEY/versions/latest",
+    const [version] = await secretClient.accessSecretVersion({
+      name: `projects/${process.env.GOOGLE_CLOUD_PROJECT || '619800545642'}/secrets/GEMINI_API_KEY/versions/latest`,
     });
     return version.payload.data.toString();
   } catch (error) {
-    logger.error("Failed to fetch GEMINI_API_KEY from Secret Manager", { error: error.message });
-    throw error;
+    logger.error("Secret Manager Access Failed", { error: error.message });
+    // Fallback to env for local dev if secret manager is not available
+    return process.env.GEMINI_API_KEY;
   }
 }
 
-export const getGeminiModel = async () => {
-  if (!genAI) {
-    const apiKey = await getApiKey();
-    genAI = new GoogleGenerativeAI(apiKey);
-  }
-  return genAI.getGenerativeModel({
-    model: CHAT_CONFIG.MODEL,
-    systemInstruction: CHAT_CONFIG.SYSTEM_INSTRUCTION
+/**
+ * Initializes and starts a generative chat session with Gemini 1.5 Flash.
+ * @param {Array<Object>} history - Previous message history for context.
+ * @returns {Promise<Object>} The initialized chat session object.
+ */
+export const startChatSession = async (history = []) => {
+  const apiKey = await getApiKey();
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ 
+    model: GEMINI_CONFIG.MODEL_NAME,
+    systemInstruction: GEMINI_CONFIG.SYSTEM_PROMPT
   });
-};
 
-export const startChatSession = async (history) => {
-  const model = await getGeminiModel();
   return model.startChat({
-    history,
+    history: history.map(msg => ({
+      role: msg.role,
+      parts: msg.parts
+    })),
     generationConfig: {
-      maxOutputTokens: 600,
-      temperature: 0.2,
+      maxOutputTokens: GEMINI_CONFIG.MAX_TOKENS,
+      temperature: GEMINI_CONFIG.TEMPERATURE,
     },
   });
 };
